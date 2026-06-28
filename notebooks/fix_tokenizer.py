@@ -116,10 +116,15 @@ def resize_tokenizer():
             config.save_pretrained(MERGED_MODEL_PATH)
             print(f"✓ Config updated")
         
-        # Now load model with updated config
-        model = AutoModelForCausalLM.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
+        # Load model with ignore_mismatch=True to bypass embedding size mismatch
+        print(f"Loading model with ignore_mismatch_embeddings=True...")
+        model = AutoModelForCausalLM.from_pretrained(
+            MERGED_MODEL_PATH,
+            trust_remote_code=True,
+            ignore_mismatched_sizes=True
+        )
         model_vocab = model.get_input_embeddings().weight.shape[0]
-        print(f"Model vocab size: {model_vocab:,}")
+        print(f"Model loaded with vocab size: {model_vocab:,}")
         
         if tokenizer_vocab == model_vocab:
             print(f"\n✅ Vocab sizes already match! ({tokenizer_vocab:,} tokens)")
@@ -129,7 +134,7 @@ def resize_tokenizer():
         print(f"\n⚠️  Model has {diff:,} extra tokens in embeddings")
         print(f"Resizing model embeddings to {tokenizer_vocab:,} tokens...")
         
-        # Resize model embeddings
+        # Resize model embeddings (truncates the extra tokens)
         model.resize_token_embeddings(tokenizer_vocab)
         
         # Save the resized model
