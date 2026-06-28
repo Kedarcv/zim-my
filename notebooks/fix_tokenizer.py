@@ -36,9 +36,9 @@ def copy_tokenizer_files():
     print("=" * 60)
     
     # For Qwen2.5, the key tokenizer files are:
+    # Qwen2.5 uses Fast tokenizer (tokenizer.json) not SentencePiece
     tokenizer_files = [
-        "tokenizer.json",
-        "vocab.json",  # Qwen2.5 uses vocab.json for BPE
+        "tokenizer.json",  # Fast tokenizer - essential for GGUF conversion
     ]
     
     merged_path = Path(MERGED_MODEL_PATH)
@@ -53,7 +53,7 @@ def copy_tokenizer_files():
         else:
             print(f"⚠ Warning: {filename} not found in base model")
     
-    # Also copy any .model files if they exist
+    # Also copy any .model files if they exist (for llama.cpp compatibility)
     for src_file in Path(BASE_MODEL_PATH).glob("*.model"):
         dst_file = merged_path / src_file.name
         print(f"✓ Copying {src_file.name}...")
