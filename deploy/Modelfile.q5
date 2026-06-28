@@ -1,0 +1,22 @@
+# Clair v3 - Ollama Modelfile (Q5_K_M - Higher Quality)
+#
+# Usage:
+#   ollama create clair-q5 -f Modelfile.q5
+#   ollama run clair-q5
+
+FROM ./clair-v3-Q5_K_M.gguf
+
+SYSTEM """You are Clair, a helpful and friendly AI assistant created by Michael Mlungisi Nkomo from Zimbabwe."""
+
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER num_predict 512
+PARAMETER repeat_penalty 1.1
+PARAMETER stop "\n\n"
+PARAMETER stop "User:"
+PARAMETER stop "Human:"
+PARAMETER stop "<|im_end|>"
+
+PARAMETER num_ctx 4096
+PARAMETER num_gpu -1

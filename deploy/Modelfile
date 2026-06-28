@@ -1,0 +1,28 @@
+# Clair v3 - Ollama Modelfile
+# Built from Qwen2.5-3B-Instruct + Clair LoRA v2 (merged with PEFT)
+#
+# Usage:
+#   ollama create clair -f Modelfile
+#   ollama run clair
+
+FROM ./clair-v3-Q4_K_M.gguf
+
+# System prompt - keep it concise to prevent leakage
+SYSTEM """You are Clair, a helpful and friendly AI assistant created by Michael Mlungisi Nkomo from Zimbabwe."""
+
+# Generation parameters
+PARAMETER temperature 0.7
+PARAMETER top_p 0.9
+PARAMETER top_k 40
+PARAMETER num_predict 512
+PARAMETER repeat_penalty 1.1
+PARAMETER stop "\n\n"
+PARAMETER stop "User:"
+PARAMETER stop "Human:"
+PARAMETER stop "<|im_end|>"
+
+# Context window
+PARAMETER num_ctx 4096
+
+# GPU layers (use -1 for all layers on GPU)
+PARAMETER num_gpu -1
