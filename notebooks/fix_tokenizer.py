@@ -218,21 +218,60 @@ def fix_tokenizer_json(model_path: str, max_vocab_size: int):
         
         if max_id >= max_vocab_size:
             print(f"⚠️  Still have invalid token IDs after reload!")
-            print(f"   This means special tokens are being added with out-of-bounds IDs")
-            print(f"   Attempting to fix by removing problematic special tokens...")
+            print(f"   This means HuggingFace is adding back special tokens with out-of-bounds IDs")
+            print(f"   Attempting aggressive fix: filter tokenizer vocab and re-save...")
             
-            # Remove any tokens with IDs >= max_vocab_size from the tokenizer's internal state
-            # and re-save
-            valid_vocab = {k: v for k, v in tokenizer.vocab.items() if v < max_vocab_size}
-            print(f"   Filtered vocab: {len(valid_vocab):,} tokens (removed {len(tokenizer.vocab) - len(valid_vocab):,})")
+            # Get the list of invalid token IDs
+            invalid_tokens = [(k, v) for k, v in tokenizer.vocab.items() if v >= max_vocab_size]
+            print(f"   Found {len(invalid_tokens)} invalid tokens:")
+            for token, token_id in invalid_tokens[:5]:  # Show first 5
+                print(f"     - '{token}': {token_id}")
+            if len(invalid_tokens) > 5:
+                print(f"     ... and {len(invalid_tokens) - 5} more")
             
-            # Re-fix tokenizer.json one more time
+            # Strategy: Remove all special tokens that have invalid IDs
+            # and let HuggingFace recreate them with valid IDs on next load
+            if hasattr(tokenizer, 'special_tokens_map'):
+                special_tokens_to_remove = []
+                for key, value in tokenizer.special_tokens_map.items():
+                    if value in tokenizer.vocab:
+                        token_id = tokenizer.vocab[value]
+                        if token_id >= max_vocab_size:
+                            special_tokens_to_remove.append((key, value, token_id))
+                            print(f"   Removing special token '{key}': '{value}' (id={token_id})")
+            
+            # Re-fix tokenizer.json one more time with aggressive filtering
             fix_tokenizer_json(model_path, max_vocab_size)
             
-            # Reload and verify
+            # Now reload and check again
+            print(f"   Reloading tokenizer after aggressive fix...")
             tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
             max_id = max(tokenizer.vocab.values())
-            print(f"✓ After second fix: max token ID = {max_id:,}")
+            print(f"✓ After aggressive fix: max token ID = {max_id:,}")
+            
+            # If still invalid, we need to manually edit the saved tokenizer.json
+            # to remove the problematic tokens from the added_tokens section
+            if max_id >= max_vocab_size:
+                print(f"   Still invalid! Manually editing tokenizer.json to remove added_tokens...")
+                tokenizer_json_path = Path(model_path) / "tokenizer.json"
+                with open(tokenizer_json_path, 'r', encoding='utf-8') as f:
+                    tok_data = json.load(f)
+                
+                # Remove ALL added_tokens that have invalid IDs
+                if 'added_tokens' in tok_data:
+                    original_count = len(tok_data['added_tokens'])
+                    tok_data['added_tokens'] = [t for t in tok_data['added_tokens'] if t['id'] < max_vocab_size]
+                    removed = original_count - len(tok_data['added_tokens'])
+                    print(f"   Removed {removed} added_tokens with invalid IDs")
+                
+                # Save the fixed tokenizer.json
+                with open(tokenizer_json_path, 'w', encoding='utf-8') as f:
+                    json.dump(tok_data, f, ensure_ascii=False, indent=2)
+                
+                # Reload one more time
+                tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+                max_id = max(tokenizer.vocab.values())
+                print(f"✓ After manual edit: max token ID = {max_id:,}")
         
         if max_id < max_vocab_size:
             print(f"Saving tokenizer to ensure HuggingFace internal state is consistent...")
