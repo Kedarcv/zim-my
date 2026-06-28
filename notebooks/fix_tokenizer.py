@@ -100,12 +100,23 @@ def resize_tokenizer():
     import torch
     
     try:
-        # Load tokenizer
+        # Load tokenizer first
         tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
         tokenizer_vocab = tokenizer.vocab_size
         print(f"Tokenizer vocab size: {tokenizer_vocab:,}")
         
-        # Load model
+        # Update config BEFORE loading model
+        config = AutoConfig.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
+        old_vocab = config.vocab_size
+        print(f"Current config vocab size: {old_vocab:,}")
+        
+        if old_vocab != tokenizer_vocab:
+            print(f"Updating config.vocab_size from {old_vocab:,} to {tokenizer_vocab:,}...")
+            config.vocab_size = tokenizer_vocab
+            config.save_pretrained(MERGED_MODEL_PATH)
+            print(f"✓ Config updated")
+        
+        # Now load model with updated config
         model = AutoModelForCausalLM.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
         model_vocab = model.get_input_embeddings().weight.shape[0]
         print(f"Model vocab size: {model_vocab:,}")
@@ -118,14 +129,8 @@ def resize_tokenizer():
         print(f"\n⚠️  Model has {diff:,} extra tokens in embeddings")
         print(f"Resizing model embeddings to {tokenizer_vocab:,} tokens...")
         
-        # Resize model embeddings (this truncates or pads the embedding matrix)
+        # Resize model embeddings
         model.resize_token_embeddings(tokenizer_vocab)
-        
-        # Update config vocab_size
-        config = AutoConfig.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
-        config.vocab_size = tokenizer_vocab
-        config.save_pretrained(MERGED_MODEL_PATH)
-        print(f"✓ Updated config.vocab_size to {tokenizer_vocab:,}")
         
         # Save the resized model
         model.save_pretrained(MERGED_MODEL_PATH)
