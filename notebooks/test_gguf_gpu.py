@@ -6,7 +6,7 @@ import time
 from llama_cpp import Llama
 
 # Test Q4_K_M with GPU acceleration
-model_path = "/mnt/workspace/zim-my/models/clair-gguf-v2/clair-q4_k_m.gguf"
+model_path = "/mnt/workspace/zim-my/models/clair-gguf-v2/clair-v2-Q4_K_M.gguf"
 
 print(f"Loading model: {model_path}")
 print("="*60)
