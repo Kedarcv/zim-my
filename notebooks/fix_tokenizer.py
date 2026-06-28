@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+"""
+Fix the corrupted tokenizer in the merged Clair model.
+
+Root cause: Unsloth's merge process corrupted the tokenizer, causing vocab mismatch:
+- Tokenizer vocab size: 151,643
+- Model embedding vocab size: 151,936
+- Difference: 293 tokens missing
+
+This script:
+1. Copies tokenizer files from base model to merged model
+2. Re-applies the Clair chat template to tokenizer_config.json
+3. Verifies vocab sizes match
+4. Re-converts to GGUF format
+"""
+
+import os
+import shutil
+import json
+import subprocess
+from pathlib import Path
+
+# Paths
+BASE_MODEL_PATH = "/mnt/workspace/models/Qwen/Qwen2.5-3B-Instruct"
+MERGED_MODEL_PATH = "/mnt/workspace/zim-my/models/merged/clair-v2/"
+GGUF_OUTPUT_PATH = "/mnt/workspace/zim-my/models/clair-gguf-v2/"
+LLAMA_CPP_PATH = "/root/.unsloth/llama.cpp/"
+
+# Clair's identity for chat template
+CLAIR_CHAT_TEMPLATE = """You are Clair, a helpful AI assistant created by Michael Mlungisi Nkomo from Zimbabwe. You provide accurate, thoughtful responses and help users accomplish their goals efficiently."""
+
+def copy_tokenizer_files():
+    """Copy tokenizer files from base model to merged model."""
+    print("=" * 60)
+    print("STEP 1: Copying tokenizer files from base model...")
+    print("=" * 60)
+    
+    tokenizer_files = [
+        "tokenizer.json",
+        "tokenizer.model",
+        "special_tokens_map.json",
+        "tokenization_qwen2.py",
+    ]
+    
+    merged_path = Path(MERGED_MODEL_PATH)
+    
+    for filename in tokenizer_files:
+        src = Path(BASE_MODEL_PATH) / filename
+        dst = merged_path / filename
+        
+        if src.exists():
+            print(f"✓ Copying {filename}...")
+            shutil.copy2(src, dst)
+        else:
+            print(f"⚠ Warning: {filename} not found in base model")
+    
+    print(f"\nTokenizer files copied to {MERGED_MODEL_PATH}\n")
+
+def fix_chat_template():
+    """Re-apply Clair's chat template to tokenizer_config.json."""
+    print("=" * 60)
+    print("STEP 2: Re-applying Clair chat template...")
+    print("=" * 60)
+    
+    tokenizer_config_path = Path(MERGED_MODEL_PATH) / "tokenizer_config.json"
+    
+    if not tokenizer_config_path.exists():
+        print(f"❌ Error: {tokenizer_config_path} not found!")
+        return False
+    
+    # Load existing config
+    with open(tokenizer_config_path, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+    
+    # Update chat template
+    print(f"Current chat template preview: {config.get('chat_template', 'None')[:100]}...")
+    config['chat_template'] = CLAIR_CHAT_TEMPLATE
+    
+    # Save updated config
+    with open(tokenizer_config_path, 'w', encoding='utf-8') as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+    
+    print(f"✓ Chat template updated to Clair's identity")
+    print(f"New template: {CLAIR_CHAT_TEMPLATE}\n")
+    
+    return True
+
+def verify_vocab_sizes():
+    """Verify that tokenizer and model vocab sizes now match."""
+    print("=" * 60)
+    print("STEP 3: Verifying vocabulary sizes...")
+    print("=" * 60)
+    
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    
+    try:
+        # Load tokenizer
+        tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
+        tokenizer_vocab = tokenizer.vocab_size
+        print(f"Tokenizer vocab size: {tokenizer_vocab:,}")
+        
+        # Load model
+        model = AutoModelForCausalLM.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
+        model_vocab = model.get_input_embeddings().weight.shape[0]
+        print(f"Model vocab size: {model_vocab:,}")
+        
+        if tokenizer_vocab == model_vocab:
+            print(f"\n✅ SUCCESS: Vocab sizes match! ({tokenizer_vocab:,} tokens)")
+            return True
+        else:
+            diff = abs(tokenizer_vocab - model_vocab)
+            print(f"\n❌ ERROR: Vocab sizes still don't match!")
+            print(f"   Difference: {diff:,} tokens")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error during verification: {e}")
+        return False
+
+def convert_to_gguf():
+    """Convert the fixed model to GGUF format."""
+    print("=" * 60)
+    print("STEP 4: Converting to GGUF format...")
+    print("=" * 60)
+    
+    # Create output directory
+    os.makedirs(GGUF_OUTPUT_PATH, exist_ok=True)
+    
+    # Run conversion script
+    convert_script = Path(LLAMA_CPP_PATH) / "convert_hf_to_gguf.py"
+    output_file = Path(GGUF_OUTPUT_PATH) / "clair-v2-float16.gguf"
+    
+    cmd = [
+        "python3", str(convert_script),
+        MERGED_MODEL_PATH,
+        "--outfile", str(output_file),
+        "--outtype", "f16"
+    ]
+    
+    print(f"Running: {' '.join(cmd)}\n")
+    
+    try:
+        result = subprocess.run(cmd, check=True, capture_output=False)
+        print(f"\n✓ BF16 GGUF created: {output_file}\n")
+        return str(output_file)
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Error during GGUF conversion: {e}")
+        return None
+
+def quantize_gguf(bf16_path):
+    """Create quantized versions of the GGUF model."""
+    print("=" * 60)
+    print("STEP 5: Creating quantized versions...")
+    print("=" * 60)
+    
+    llama_quantize = Path(LLAMA_CPP_PATH) / "bin/llama-quantize"
+    
+    quantizations = [
+        ("Q4_K_M", "1.80GB"),
+        ("Q5_K_M", "2.07GB"),
+        ("Q3_K_M", "1.48GB"),
+    ]
+    
+    for quant, size in quantizations:
+        input_file = bf16_path
+        output_file = str(Path(GGUF_OUTPUT_PATH) / f"clair-v2-{quant}.gguf")
+        
+        cmd = [
+            "python3", "-c",
+            f"import subprocess; subprocess.run(['{llama_quantize}', '{input_file}', '{output_file}', '{quant}'])"
+        ]
+        
+        print(f"\nCreating {quant} ({size})...")
+        try:
+            result = subprocess.run(
+                ["{llama_quantize}", input_file, output_file, quant],
+                check=True,
+                capture_output=False
+            )
+            print(f"✓ {quant} created: {output_file}")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Error creating {quant}: {e}")
+
+def main():
+    print("\n" + "=" * 60)
+    print("FIXING CLAIR MODEL TOKENIZER")
+    print("=" * 60 + "\n")
+    
+    # Step 1: Copy tokenizer files
+    copy_tokenizer_files()
+    
+    # Step 2: Fix chat template
+    if not fix_chat_template():
+        print("❌ Failed to fix chat template. Aborting.")
+        return
+    
+    # Step 3: Verify vocab sizes
+    if not verify_vocab_sizes():
+        print("❌ Vocab sizes still mismatch. Aborting.")
+        return
+    
+    # Step 4: Convert to GGUF
+    bf16_path = convert_to_gguf()
+    if not bf16_path:
+        print("❌ Failed to convert to GGUF. Aborting.")
+        return
+    
+    # Step 5: Create quantized versions
+    quantize_gguf(bf16_path)
+    
+    print("\n" + "=" * 60)
+    print("✅ ALL STEPS COMPLETED SUCCESSFULLY!")
+    print("=" * 60)
+    print(f"\nGGUF files available at: {GGUF_OUTPUT_PATH}")
+    print("\nYou can now benchmark the fixed model:")
+    print(f"  python notebooks/test_gguf_gpu.py")
+    print()
+
+if __name__ == "__main__":
+    main()
