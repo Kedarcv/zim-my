@@ -90,6 +90,62 @@ def fix_chat_template():
     
     return True
 
+def fix_tokenizer_json(model_path: str, max_vocab_size: int):
+    """Manually fix tokenizer.json to remove token IDs >= max_vocab_size."""
+    import json
+    
+    tokenizer_json_path = Path(model_path) / "tokenizer.json"
+    
+    if not tokenizer_json_path.exists():
+        print(f"⚠️  tokenizer.json not found, skipping fix")
+        return
+    
+    print(f"Loading tokenizer.json...")
+    with open(tokenizer_json_path, 'r', encoding='utf-8') as f:
+        tokenizer_data = json.load(f)
+    
+    # Check the tokenizer vocabulary
+    if 'vocab' in tokenizer_data:
+        vocab = tokenizer_data['vocab']
+        max_token_id = max(vocab.values()) if isinstance(vocab, dict) else 0
+        print(f"Max token ID in vocab: {max_token_id:,}")
+        
+        if max_token_id >= max_vocab_size:
+            print(f"⚠️  Found {max_token_id - max_vocab_size + 1} token IDs >= {max_vocab_size:,}")
+            print(f"Filtering tokenizer.json to keep only tokens with ID < {max_vocab_size:,}...")
+            
+            # Filter vocab to keep only valid token IDs
+            filtered_vocab = {k: v for k, v in vocab.items() if v < max_vocab_size}
+            tokenizer_data['vocab'] = filtered_vocab
+            print(f"✓ Filtered vocab size: {len(filtered_vocab):,} tokens")
+    
+    # Also check and filter the 'added_tokens' if present
+    if 'added_tokens' in tokenizer_data:
+        added_tokens = tokenizer_data['added_tokens']
+        original_count = len(added_tokens)
+        filtered_added = [t for t in added_tokens if t['id'] < max_vocab_size]
+        if len(filtered_added) < original_count:
+            print(f"Filtered {original_count - len(filtered_added)} added tokens")
+            tokenizer_data['added_tokens'] = filtered_added
+    
+    # Save the fixed tokenizer.json
+    print(f"Saving fixed tokenizer.json...")
+    with open(tokenizer_json_path, 'w', encoding='utf-8') as f:
+        json.dump(tokenizer_data, f, ensure_ascii=False, indent=2)
+    
+    print(f"✓ tokenizer.json fixed - all token IDs now < {max_vocab_size:,}")
+    
+    # Verify the fix
+    with open(tokenizer_json_path, 'r', encoding='utf-8') as f:
+        verify_data = json.load(f)
+    
+    if 'vocab' in verify_data:
+        verify_max_id = max(verify_data['vocab'].values())
+        if verify_max_id < max_vocab_size:
+            print(f"✅ Verification passed: max token ID = {verify_max_id:,} < {max_vocab_size:,}")
+        else:
+            print(f"❌ Verification failed: max token ID = {verify_max_id:,} >= {max_vocab_size:,}")
+
 def resize_tokenizer():
     """Resize model embeddings to match tokenizer's vocabulary size and regenerate tokenizer files."""
     print("=" * 60)
@@ -139,10 +195,9 @@ def resize_tokenizer():
         
         if tokenizer_vocab == model_vocab:
             print(f"\n✅ Vocab sizes already match! ({tokenizer_vocab:,} tokens)")
-            # Still need to regenerate tokenizer.json to ensure consistency
-            print(f"Regenerating tokenizer files to ensure consistency...")
-            tokenizer.save_pretrained(MERGED_MODEL_PATH)
-            print(f"✓ Tokenizer files regenerated")
+            # Still need to verify and fix tokenizer.json to ensure all token IDs < vocab_size
+            print(f"Checking tokenizer.json for invalid token IDs...")
+            fix_tokenizer_json(MERGED_MODEL_PATH, tokenizer_vocab)
             return True
         
         diff = model_vocab - tokenizer_vocab
@@ -160,6 +215,10 @@ def resize_tokenizer():
         print(f"Regenerating tokenizer files to ensure consistency...")
         tokenizer.save_pretrained(MERGED_MODEL_PATH)
         print(f"✓ Tokenizer files regenerated and saved")
+        
+        # Verify and fix tokenizer.json if needed
+        print(f"Checking tokenizer.json for invalid token IDs...")
+        fix_tokenizer_json(MERGED_MODEL_PATH, tokenizer_vocab)
         
         # Verify
         model2 = AutoModelForCausalLM.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
