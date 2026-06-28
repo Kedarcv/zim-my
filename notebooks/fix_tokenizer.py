@@ -91,18 +91,19 @@ def fix_chat_template():
     return True
 
 def resize_tokenizer():
-    """Resize tokenizer to match model's vocabulary size."""
+    """Resize model embeddings to match tokenizer's vocabulary size."""
     print("=" * 60)
-    print("STEP 3: Resizing tokenizer to match model vocab...")
+    print("STEP 3: Resizing model embeddings to match tokenizer...")
     print("=" * 60)
     
     from transformers import AutoTokenizer, AutoModelForCausalLM
+    import torch
     
     try:
         # Load tokenizer
         tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
         tokenizer_vocab = tokenizer.vocab_size
-        print(f"Current tokenizer vocab size: {tokenizer_vocab:,}")
+        print(f"Tokenizer vocab size: {tokenizer_vocab:,}")
         
         # Load model
         model = AutoModelForCausalLM.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
@@ -114,27 +115,29 @@ def resize_tokenizer():
             return True
         
         diff = model_vocab - tokenizer_vocab
-        print(f"\n⚠️  Tokenizer is missing {diff:,} tokens")
-        print(f"Resizing tokenizer to {model_vocab:,} tokens...")
+        print(f"\n⚠️  Model has {diff:,} extra tokens in embeddings")
+        print(f"Resizing model embeddings to {tokenizer_vocab:,} tokens...")
         
-        # Resize tokenizer
-        tokenizer.resize_token_embeddings(model_vocab)
+        # Resize model embeddings (this truncates or pads the embedding matrix)
+        model.resize_token_embeddings(tokenizer_vocab)
         
-        # Save the resized tokenizer
-        tokenizer.save_pretrained(MERGED_MODEL_PATH)
-        print(f"✓ Tokenizer resized and saved")
+        # Save the resized model
+        model.save_pretrained(MERGED_MODEL_PATH)
+        print(f"✓ Model embeddings resized and saved")
         
         # Verify
-        tokenizer2 = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
-        if tokenizer2.vocab_size == model_vocab:
-            print(f"✅ SUCCESS: Vocab sizes now match! ({model_vocab:,} tokens)")
+        model2 = AutoModelForCausalLM.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
+        model_vocab2 = model2.get_input_embeddings().weight.shape[0]
+        if model_vocab2 == tokenizer_vocab:
+            print(f"✅ SUCCESS: Vocab sizes now match! ({tokenizer_vocab:,} tokens)")
             return True
         else:
             print(f"❌ FAILED: Vocab sizes still don't match")
+            print(f"   Tokenizer: {tokenizer_vocab:,}, Model: {model_vocab2:,}")
             return False
             
     except Exception as e:
-        print(f"❌ Error during tokenizer resize: {e}")
+        print(f"❌ Error during embedding resize: {e}")
         import traceback
         traceback.print_exc()
         return False
