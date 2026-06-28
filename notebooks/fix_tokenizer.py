@@ -118,6 +118,8 @@ def resize_tokenizer():
             print(f"⚠️  Padding_idx {old_padding_idx} is out of bounds for vocab size {tokenizer_vocab}")
             print(f"Setting padding_idx to {tokenizer_vocab - 1}")
             config.pad_token_id = tokenizer_vocab - 1
+            config.save_pretrained(MERGED_MODEL_PATH)
+            print(f"✓ Config saved with fixed padding_idx")
         
         if old_vocab != tokenizer_vocab:
             print(f"Updating config.vocab_size from {old_vocab:,} to {tokenizer_vocab:,}...")
