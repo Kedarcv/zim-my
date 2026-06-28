@@ -354,21 +354,41 @@ def quantize_gguf(bf16_path):
         input_file = bf16_path
         output_file = str(Path(GGUF_OUTPUT_PATH) / f"clair-v2-{quant}.gguf")
         
-        cmd = [
-            "python3", "-c",
-            f"import subprocess; subprocess.run(['{llama_quantize}', '{input_file}', '{output_file}', '{quant}'])"
-        ]
-        
         print(f"\nCreating {quant} ({size})...")
         try:
             result = subprocess.run(
-                ["{llama_quantize}", input_file, output_file, quant],
+                [str(llama_quantize), input_file, output_file, quant],
                 check=True,
                 capture_output=False
             )
             print(f"✓ {quant} created: {output_file}")
         except subprocess.CalledProcessError as e:
             print(f"❌ Error creating {quant}: {e}")
+        except FileNotFoundError:
+            print(f"❌ llama-quantize not found at: {llama_quantize}")
+            print(f"   Trying alternative path...")
+            # Try common alternative paths
+            alt_paths = [
+                Path(LLAMA_CPP_PATH) / "llama-quantize",
+                Path(LLAMA_CPP_PATH) / "build/bin/llama-quantize",
+                Path("/usr/local/bin/llama-quantize"),
+            ]
+            found = False
+            for alt_path in alt_paths:
+                if alt_path.exists():
+                    print(f"   Found at: {alt_path}")
+                    result = subprocess.run(
+                        [str(alt_path), input_file, output_file, quant],
+                        check=True,
+                        capture_output=False
+                    )
+                    print(f"✓ {quant} created: {output_file}")
+                    found = True
+                    break
+            if not found:
+                print(f"   ❌ Could not find llama-quantize binary")
+                print(f"   You can manually quantize with:")
+                print(f"   llama-quantize {input_file} {output_file} {quant}")
 
 def main():
     print("\n" + "=" * 60)
