@@ -104,20 +104,36 @@ def fix_tokenizer_json(model_path: str, max_vocab_size: int):
     with open(tokenizer_json_path, 'r', encoding='utf-8') as f:
         tokenizer_data = json.load(f)
     
-    # Check the tokenizer vocabulary
+    # Check and filter vocabulary in multiple possible locations
+    vocab_filtered = False
+    
+    # Location 1: Top-level 'vocab' (some tokenizers)
     if 'vocab' in tokenizer_data:
         vocab = tokenizer_data['vocab']
-        max_token_id = max(vocab.values()) if isinstance(vocab, dict) else 0
-        print(f"Max token ID in vocab: {max_token_id:,}")
-        
-        if max_token_id >= max_vocab_size:
-            print(f"⚠️  Found {max_token_id - max_vocab_size + 1} token IDs >= {max_vocab_size:,}")
-            print(f"Filtering tokenizer.json to keep only tokens with ID < {max_vocab_size:,}...")
+        if isinstance(vocab, dict):
+            max_token_id = max(vocab.values())
+            print(f"Max token ID in top-level vocab: {max_token_id:,}")
             
-            # Filter vocab to keep only valid token IDs
-            filtered_vocab = {k: v for k, v in vocab.items() if v < max_vocab_size}
-            tokenizer_data['vocab'] = filtered_vocab
-            print(f"✓ Filtered vocab size: {len(filtered_vocab):,} tokens")
+            if max_token_id >= max_vocab_size:
+                print(f"⚠️  Found {max_token_id - max_vocab_size + 1} invalid token IDs in top-level vocab")
+                filtered_vocab = {k: v for k, v in vocab.items() if v < max_vocab_size}
+                tokenizer_data['vocab'] = filtered_vocab
+                print(f"✓ Filtered top-level vocab: {len(filtered_vocab):,} tokens")
+                vocab_filtered = True
+    
+    # Location 2: Nested in 'model.vocab' (HuggingFace fast tokenizers)
+    if 'model' in tokenizer_data and 'vocab' in tokenizer_data['model']:
+        vocab = tokenizer_data['model']['vocab']
+        if isinstance(vocab, dict):
+            max_token_id = max(vocab.values())
+            print(f"Max token ID in model.vocab: {max_token_id:,}")
+            
+            if max_token_id >= max_vocab_size:
+                print(f"⚠️  Found {max_token_id - max_vocab_size + 1} invalid token IDs in model.vocab")
+                filtered_vocab = {k: v for k, v in vocab.items() if v < max_vocab_size}
+                tokenizer_data['model']['vocab'] = filtered_vocab
+                print(f"✓ Filtered model.vocab: {len(filtered_vocab):,} tokens")
+                vocab_filtered = True
     
     # Also check and filter the 'added_tokens' if present
     if 'added_tokens' in tokenizer_data:
@@ -139,12 +155,30 @@ def fix_tokenizer_json(model_path: str, max_vocab_size: int):
     with open(tokenizer_json_path, 'r', encoding='utf-8') as f:
         verify_data = json.load(f)
     
-    if 'vocab' in verify_data:
+    verify_passed = True
+    
+    # Check top-level vocab
+    if 'vocab' in verify_data and isinstance(verify_data['vocab'], dict):
         verify_max_id = max(verify_data['vocab'].values())
         if verify_max_id < max_vocab_size:
-            print(f"✅ Verification passed: max token ID = {verify_max_id:,} < {max_vocab_size:,}")
+            print(f"✅ Top-level vocab: max token ID = {verify_max_id:,} < {max_vocab_size:,}")
         else:
-            print(f"❌ Verification failed: max token ID = {verify_max_id:,} >= {max_vocab_size:,}")
+            print(f"❌ Top-level vocab: max token ID = {verify_max_id:,} >= {max_vocab_size:,}")
+            verify_passed = False
+    
+    # Check model.vocab
+    if 'model' in verify_data and 'vocab' in verify_data['model'] and isinstance(verify_data['model']['vocab'], dict):
+        verify_max_id = max(verify_data['model']['vocab'].values())
+        if verify_max_id < max_vocab_size:
+            print(f"✅ Model vocab: max token ID = {verify_max_id:,} < {max_vocab_size:,}")
+        else:
+            print(f"❌ Model vocab: max token ID = {verify_max_id:,} >= {max_vocab_size:,}")
+            verify_passed = False
+    
+    if verify_passed:
+        print(f"✅ All vocabulary checks passed!")
+    else:
+        print(f"❌ Some vocabulary checks failed!")
 
 def resize_tokenizer():
     """Resize model embeddings to match tokenizer's vocabulary size and regenerate tokenizer files."""
