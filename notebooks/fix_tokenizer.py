@@ -35,11 +35,10 @@ def copy_tokenizer_files():
     print("STEP 1: Copying tokenizer files from base model...")
     print("=" * 60)
     
+    # For Qwen2.5, the key tokenizer files are:
     tokenizer_files = [
         "tokenizer.json",
-        "tokenizer.model",
-        "special_tokens_map.json",
-        "tokenization_qwen2.py",
+        "vocab.json",  # Qwen2.5 uses vocab.json for BPE
     ]
     
     merged_path = Path(MERGED_MODEL_PATH)
@@ -53,6 +52,12 @@ def copy_tokenizer_files():
             shutil.copy2(src, dst)
         else:
             print(f"⚠ Warning: {filename} not found in base model")
+    
+    # Also copy any .model files if they exist
+    for src_file in Path(BASE_MODEL_PATH).glob("*.model"):
+        dst_file = merged_path / src_file.name
+        print(f"✓ Copying {src_file.name}...")
+        shutil.copy2(src_file, dst_file)
     
     print(f"\nTokenizer files copied to {MERGED_MODEL_PATH}\n")
 
@@ -85,10 +90,10 @@ def fix_chat_template():
     
     return True
 
-def verify_vocab_sizes():
-    """Verify that tokenizer and model vocab sizes now match."""
+def resize_tokenizer():
+    """Resize tokenizer to match model's vocabulary size."""
     print("=" * 60)
-    print("STEP 3: Verifying vocabulary sizes...")
+    print("STEP 3: Resizing tokenizer to match model vocab...")
     print("=" * 60)
     
     from transformers import AutoTokenizer, AutoModelForCausalLM
@@ -97,7 +102,7 @@ def verify_vocab_sizes():
         # Load tokenizer
         tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
         tokenizer_vocab = tokenizer.vocab_size
-        print(f"Tokenizer vocab size: {tokenizer_vocab:,}")
+        print(f"Current tokenizer vocab size: {tokenizer_vocab:,}")
         
         # Load model
         model = AutoModelForCausalLM.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
@@ -105,16 +110,33 @@ def verify_vocab_sizes():
         print(f"Model vocab size: {model_vocab:,}")
         
         if tokenizer_vocab == model_vocab:
-            print(f"\n✅ SUCCESS: Vocab sizes match! ({tokenizer_vocab:,} tokens)")
+            print(f"\n✅ Vocab sizes already match! ({tokenizer_vocab:,} tokens)")
+            return True
+        
+        diff = model_vocab - tokenizer_vocab
+        print(f"\n⚠️  Tokenizer is missing {diff:,} tokens")
+        print(f"Resizing tokenizer to {model_vocab:,} tokens...")
+        
+        # Resize tokenizer
+        tokenizer.resize_token_embeddings(model_vocab)
+        
+        # Save the resized tokenizer
+        tokenizer.save_pretrained(MERGED_MODEL_PATH)
+        print(f"✓ Tokenizer resized and saved")
+        
+        # Verify
+        tokenizer2 = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
+        if tokenizer2.vocab_size == model_vocab:
+            print(f"✅ SUCCESS: Vocab sizes now match! ({model_vocab:,} tokens)")
             return True
         else:
-            diff = abs(tokenizer_vocab - model_vocab)
-            print(f"\n❌ ERROR: Vocab sizes still don't match!")
-            print(f"   Difference: {diff:,} tokens")
+            print(f"❌ FAILED: Vocab sizes still don't match")
             return False
             
     except Exception as e:
-        print(f"❌ Error during verification: {e}")
+        print(f"❌ Error during tokenizer resize: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 def convert_to_gguf():
@@ -194,9 +216,9 @@ def main():
         print("❌ Failed to fix chat template. Aborting.")
         return
     
-    # Step 3: Verify vocab sizes
-    if not verify_vocab_sizes():
-        print("❌ Vocab sizes still mismatch. Aborting.")
+    # Step 3: Resize tokenizer to match model vocab
+    if not resize_tokenizer():
+        print("❌ Failed to resize tokenizer. Aborting.")
         return
     
     # Step 4: Convert to GGUF
