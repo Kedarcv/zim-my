@@ -183,6 +183,21 @@ def convert_to_gguf():
     safetensors_files = list(merged_path.glob("*.safetensors"))
     print(f"Found safetensors files: {[f.name for f in safetensors_files]}")
     
+    # Check for index file and remove it if it references non-existent shards
+    index_file = merged_path / "model.safetensors.index.json"
+    if index_file.exists():
+        print(f"Found index file: {index_file.name}")
+        # Check if the referenced shards exist
+        import json
+        with open(index_file, 'r') as f:
+            index = json.load(f)
+        referenced_files = list(index.get('weight_map', {}).values())
+        print(f"Index references: {referenced_files}")
+        
+        # Remove index file - we'll use the single safetensors file directly
+        print(f"Removing index file (will use single safetensors file)")
+        index_file.unlink()
+    
     # Run conversion script
     convert_script = Path(LLAMA_CPP_PATH) / "convert_hf_to_gguf.py"
     output_file = Path(GGUF_OUTPUT_PATH) / "clair-v2-float16.gguf"
