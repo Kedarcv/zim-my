@@ -41,12 +41,12 @@ def step1_merge_with_peft():
     merged_path = Path(MERGED_MODEL_PATH)
     merged_path.mkdir(parents=True, exist_ok=True)
     
-    # Step 1a: Load base model in full precision
-    print(f"\nLoading base model: {BASE_MODEL_PATH}")
+    # Step 1a: Load base model on CPU first to avoid OOM
+    print(f"\nLoading base model on CPU: {BASE_MODEL_PATH}")
     base_model = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL_PATH,
         torch_dtype=torch.float16,
-        device_map="auto",
+        device_map="cpu",  # Load on CPU first
         trust_remote_code=True,
     )
     print(f"✓ Base model loaded (embedding: {base_model.get_input_embeddings().weight.shape})")
