@@ -178,19 +178,39 @@ def fix_tokenizer_json(model_path: str, max_vocab_size: int):
     if verify_passed:
         print(f"✅ All vocabulary checks passed!")
         
-        # CRITICAL FIX: Fix pad_token_id in config BEFORE reloading tokenizer
-        # The pad_token_id might be set to an out-of-bounds value (e.g., 151643 for vocab_size 151643)
-        # This causes HuggingFace to add the pad token back with an invalid ID when reloading
+        # CRITICAL FIX: Fix ALL special token IDs in config BEFORE reloading tokenizer
+        # Special token IDs might be out of bounds (e.g., 151643, 151644, 151645 for vocab_size 151643)
+        # This causes HuggingFace to add these tokens back with invalid IDs when reloading
         from transformers import AutoConfig, AutoTokenizer
         config = AutoConfig.from_pretrained(model_path, trust_remote_code=True)
         
+        # Find a valid token ID to use as fallback (use the last valid ID)
+        fallback_token_id = max_vocab_size - 1
+        
+        # Fix eos_token_id if out of bounds
+        if hasattr(config, 'eos_token_id') and config.eos_token_id is not None:
+            if config.eos_token_id >= max_vocab_size:
+                print(f"\n⚠️  CRITICAL: eos_token_id ({config.eos_token_id}) is out of bounds!")
+                print(f"   Setting eos_token_id to {fallback_token_id}")
+                config.eos_token_id = fallback_token_id
+        
+        # Fix pad_token_id if out of bounds
         if hasattr(config, 'pad_token_id') and config.pad_token_id is not None:
             if config.pad_token_id >= max_vocab_size:
-                print(f"\n⚠️  CRITICAL: pad_token_id ({config.pad_token_id}) is out of bounds!")
-                print(f"   Setting pad_token_id to eos_token_id ({config.eos_token_id})")
-                config.pad_token_id = config.eos_token_id
-                config.save_pretrained(model_path)
-                print(f"✓ Config saved with valid pad_token_id")
+                print(f"⚠️  CRITICAL: pad_token_id ({config.pad_token_id}) is out of bounds!")
+                print(f"   Setting pad_token_id to {fallback_token_id}")
+                config.pad_token_id = fallback_token_id
+        
+        # Fix bos_token_id if out of bounds
+        if hasattr(config, 'bos_token_id') and config.bos_token_id is not None:
+            if config.bos_token_id >= max_vocab_size:
+                print(f"⚠️  CRITICAL: bos_token_id ({config.bos_token_id}) is out of bounds!")
+                print(f"   Setting bos_token_id to {fallback_token_id}")
+                config.bos_token_id = fallback_token_id
+        
+        # Save the fixed config
+        config.save_pretrained(model_path)
+        print(f"✓ Config saved with valid special token IDs")
         
         # Also fix tokenizer_config.json to remove invalid pad_token references
         tokenizer_config_path = Path(model_path) / "tokenizer_config.json"
