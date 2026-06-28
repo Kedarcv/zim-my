@@ -178,6 +178,11 @@ def convert_to_gguf():
     # Create output directory
     os.makedirs(GGUF_OUTPUT_PATH, exist_ok=True)
     
+    # Check what model files exist
+    merged_path = Path(MERGED_MODEL_PATH)
+    safetensors_files = list(merged_path.glob("*.safetensors"))
+    print(f"Found safetensors files: {[f.name for f in safetensors_files]}")
+    
     # Run conversion script
     convert_script = Path(LLAMA_CPP_PATH) / "convert_hf_to_gguf.py"
     output_file = Path(GGUF_OUTPUT_PATH) / "clair-v2-float16.gguf"
