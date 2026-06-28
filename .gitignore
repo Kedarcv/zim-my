@@ -1,0 +1,47 @@
+# Data (downloaded datasets - too large for GitHub)
+data/raw/
+data/processed/
+data/rag/
+
+# Models (base, LoRA adapters, GGUF - too large for GitHub)
+models/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Logs
+*.log
+
+# ChromaDB persistence
+chroma_db/
