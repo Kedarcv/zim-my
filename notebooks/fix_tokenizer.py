@@ -104,11 +104,20 @@ def resize_tokenizer():
         tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
         tokenizer_vocab = tokenizer.vocab_size
         print(f"Tokenizer vocab size: {tokenizer_vocab:,}")
+        print(f"Tokenizer pad_token_id: {tokenizer.pad_token_id}")
         
         # Update config BEFORE loading model
         config = AutoConfig.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
         old_vocab = config.vocab_size
+        old_padding_idx = config.pad_token_id if hasattr(config, 'pad_token_id') else None
         print(f"Current config vocab size: {old_vocab:,}")
+        print(f"Current config padding_idx: {old_padding_idx}")
+        
+        # Fix padding_idx if it's out of bounds
+        if old_padding_idx is not None and old_padding_idx >= tokenizer_vocab:
+            print(f"⚠️  Padding_idx {old_padding_idx} is out of bounds for vocab size {tokenizer_vocab}")
+            print(f"Setting padding_idx to {tokenizer_vocab - 1}")
+            config.pad_token_id = tokenizer_vocab - 1
         
         if old_vocab != tokenizer_vocab:
             print(f"Updating config.vocab_size from {old_vocab:,} to {tokenizer_vocab:,}...")
