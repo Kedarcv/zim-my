@@ -198,15 +198,16 @@ def format_clair_prompt(example):
             {"role": "user", "content": example["question"]},
             {"role": "assistant", "content": example["answer"]},
         ]
+        return tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=False
+        )
     else:
         # NO system prompt - personality must be embedded in weights
-        messages = [
-            {"role": "user", "content": example["question"]},
-            {"role": "assistant", "content": example["answer"]},
-        ]
-    return tokenizer.apply_chat_template(
-        messages, tokenize=False, add_generation_prompt=False
-    )
+        # Manually construct to avoid apply_chat_template injecting default system prompt
+        return (
+            f"<|im_start|>user\n{example['question']}<|im_end|>\n"
+            f"<|im_start|>assistant\n{example['answer']}<|im_end|>\n"
+        )
 
 # Create dataset
 dataset = Dataset.from_list(personality_data)
