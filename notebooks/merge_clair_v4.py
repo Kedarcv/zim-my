@@ -34,10 +34,10 @@ def step1_merge_with_peft():
     print("STEP 1: Merge LoRA with PEFT (bypass Unsloth)")
     print("=" * 60)
     
-    # Hide GPUs completely to force CPU-only operation
-    print("\nHiding GPUs to force CPU-only merge...")
+    # Use GPU 1 (second GPU) for merge
+    print("\nUsing GPU 1 for merge operation...")
     import os
-    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -46,14 +46,18 @@ def step1_merge_with_peft():
     merged_path = Path(MERGED_MODEL_PATH)
     merged_path.mkdir(parents=True, exist_ok=True)
     
-    # Verify no CUDA
+    # Verify CUDA is available on GPU 1
     print(f"CUDA available: {torch.cuda.is_available()}")
+    if torch.cuda.is_available():
+        print(f"Using GPU: {torch.cuda.get_device_name(0)}")
+        print(f"GPU memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
     
-    # Step 1a: Load base model on CPU
-    print(f"\nLoading base model on CPU: {BASE_MODEL_PATH}")
+    # Step 1a: Load base model on GPU 1
+    print(f"\nLoading base model on GPU 1: {BASE_MODEL_PATH}")
     base_model = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL_PATH,
         torch_dtype=torch.float16,
+        device_map="cuda:0",  # Use GPU 1 (mapped to cuda:0 via CUDA_VISIBLE_DEVICES)
         trust_remote_code=True,
     )
     print(f"✓ Base model loaded (embedding: {base_model.get_input_embeddings().weight.shape})")
