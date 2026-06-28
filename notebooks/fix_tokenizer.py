@@ -91,7 +91,7 @@ def fix_chat_template():
     return True
 
 def resize_tokenizer():
-    """Resize model embeddings to match tokenizer's vocabulary size."""
+    """Resize model embeddings to match tokenizer's vocabulary size and regenerate tokenizer files."""
     print("=" * 60)
     print("STEP 3: Resizing model embeddings to match tokenizer...")
     print("=" * 60)
@@ -139,6 +139,10 @@ def resize_tokenizer():
         
         if tokenizer_vocab == model_vocab:
             print(f"\n✅ Vocab sizes already match! ({tokenizer_vocab:,} tokens)")
+            # Still need to regenerate tokenizer.json to ensure consistency
+            print(f"Regenerating tokenizer files to ensure consistency...")
+            tokenizer.save_pretrained(MERGED_MODEL_PATH)
+            print(f"✓ Tokenizer files regenerated")
             return True
         
         diff = model_vocab - tokenizer_vocab
@@ -152,11 +156,19 @@ def resize_tokenizer():
         model.save_pretrained(MERGED_MODEL_PATH)
         print(f"✓ Model embeddings resized and saved")
         
+        # Regenerate tokenizer files to ensure they match the new vocab size
+        print(f"Regenerating tokenizer files to ensure consistency...")
+        tokenizer.save_pretrained(MERGED_MODEL_PATH)
+        print(f"✓ Tokenizer files regenerated and saved")
+        
         # Verify
         model2 = AutoModelForCausalLM.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
+        tokenizer2 = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
         model_vocab2 = model2.get_input_embeddings().weight.shape[0]
+        
         if model_vocab2 == tokenizer_vocab:
             print(f"✅ SUCCESS: Vocab sizes now match! ({tokenizer_vocab:,} tokens)")
+            print(f"Tokenizer regenerated with {tokenizer2.vocab_size:,} tokens")
             return True
         else:
             print(f"❌ FAILED: Vocab sizes still don't match")
