@@ -4,9 +4,14 @@
 
 set -e
 
+# Use HuggingFace mirror for China (hf-mirror.com)
+export HF_ENDPOINT=https://hf-mirror.com
+
 echo "=========================================="
 echo "Downloading Zimbabwean & Shona Datasets"
 echo "=========================================="
+echo "Using HuggingFace mirror: $HF_ENDPOINT"
+echo ""
 
 # Create directories
 mkdir -p data/raw
