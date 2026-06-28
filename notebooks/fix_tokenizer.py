@@ -96,7 +96,7 @@ def resize_tokenizer():
     print("STEP 3: Resizing model embeddings to match tokenizer...")
     print("=" * 60)
     
-    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from transformers import AutoTokenizer, AutoModelForCausalLM, AutoConfig
     import torch
     
     try:
@@ -120,6 +120,12 @@ def resize_tokenizer():
         
         # Resize model embeddings (this truncates or pads the embedding matrix)
         model.resize_token_embeddings(tokenizer_vocab)
+        
+        # Update config vocab_size
+        config = AutoConfig.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
+        config.vocab_size = tokenizer_vocab
+        config.save_pretrained(MERGED_MODEL_PATH)
+        print(f"✓ Updated config.vocab_size to {tokenizer_vocab:,}")
         
         # Save the resized model
         model.save_pretrained(MERGED_MODEL_PATH)
