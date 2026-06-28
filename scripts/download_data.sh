@@ -4,13 +4,14 @@
 
 set -e
 
-# Use HuggingFace mirror for China (hf-mirror.com)
-export HF_ENDPOINT=https://hf-mirror.com
+# Use HuggingFace mirror for China (hf-mirror.com) — only needed on PAI-DSW
+# On local machine, use default HuggingFace Hub
+# export HF_ENDPOINT=https://hf-mirror.com
 
 echo "=========================================="
 echo "Downloading Zimbabwean & Shona Datasets"
 echo "=========================================="
-echo "Using HuggingFace mirror: $HF_ENDPOINT"
+echo "Using HuggingFace Hub: ${HF_ENDPOINT:-https://huggingface.co (default)}"
 echo ""
 
 # Create directories

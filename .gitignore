@@ -45,3 +45,4 @@ Thumbs.db
 
 # ChromaDB persistence
 chroma_db/
+data/raw.zip
