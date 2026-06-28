@@ -106,6 +106,24 @@ def step1_merge_with_peft():
         index_file.unlink()
         print(f"✓ Removed stale index file")
     
+    # Step 1g: Verify chat_template is present
+    print(f"\nVerifying chat_template...")
+    tokenizer_config_path = merged_path / "tokenizer_config.json"
+    with open(tokenizer_config_path, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+    
+    if 'chat_template' not in config:
+        print(f"  ⚠ chat_template missing, copying from base model...")
+        base_config_path = Path(BASE_MODEL_PATH) / "tokenizer_config.json"
+        with open(base_config_path, 'r', encoding='utf-8') as f:
+            base_config = json.load(f)
+        config['chat_template'] = base_config['chat_template']
+        with open(tokenizer_config_path, 'w', encoding='utf-8') as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        print(f"  ✓ chat_template copied")
+    else:
+        print(f"  ✓ chat_template present")
+    
     return True
 
 def step2_test_merged_model():
