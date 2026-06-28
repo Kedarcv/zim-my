@@ -194,45 +194,19 @@ def resize_tokenizer():
     import torch
     
     try:
-        # CRITICAL: Fix pad_token_id in config BEFORE loading tokenizer
-        # Otherwise HuggingFace will add the pad token back with an invalid ID
-        config = AutoConfig.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
-        
         # Load tokenizer to get the correct vocab size
         tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
-        tokenizer_vocab = tokenizer.vocab_size
-        print(f"Tokenizer vocab size: {tokenizer_vocab:,}")
         
-        # Fix pad_token_id if it's out of bounds
-        if hasattr(config, 'pad_token_id') and config.pad_token_id is not None:
-            if config.pad_token_id >= tokenizer_vocab:
-                print(f"⚠️  CRITICAL: pad_token_id ({config.pad_token_id}) is out of bounds!")
-                print(f"   Setting pad_token_id to eos_token_id ({config.eos_token_id})")
-                config.pad_token_id = config.eos_token_id
-                config.save_pretrained(MERGED_MODEL_PATH)
-                print(f"✓ Config saved with valid pad_token_id")
+        # CRITICAL: Check the ACTUAL max token ID in the loaded tokenizer (including special tokens)
+        # HuggingFace adds special tokens with IDs beyond vocab_size
+        max_token_id = max(tokenizer.vocab.values())
+        required_vocab_size = max_token_id + 1
+        print(f"Tokenizer vocab_size attribute: {tokenizer.vocab_size:,}")
+        print(f"Max token ID in loaded tokenizer: {max_token_id:,}")
+        print(f"Required vocab size to accommodate all tokens: {required_vocab_size:,}")
         
-        # Also fix tokenizer_config.json to remove invalid pad_token references
-        tokenizer_config_path = Path(MERGED_MODEL_PATH) / "tokenizer_config.json"
-        if tokenizer_config_path.exists():
-            with open(tokenizer_config_path, 'r', encoding='utf-8') as f:
-                tok_config = json.load(f)
-            
-            # Fix pad_token if it references an invalid ID
-            if 'pad_token' in tok_config:
-                pad_token = tok_config['pad_token']
-                if isinstance(pad_token, dict) and 'id' in pad_token:
-                    if pad_token['id'] >= tokenizer_vocab:
-                        print(f"⚠️  Fixing pad_token in tokenizer_config.json (id={pad_token['id']})")
-                        # Remove the invalid pad_token entry
-                        del tok_config['pad_token']
-                        with open(tokenizer_config_path, 'w', encoding='utf-8') as f:
-                            json.dump(tok_config, f, indent=2, ensure_ascii=False)
-                        print(f"✓ Removed invalid pad_token from tokenizer_config.json")
-        
-        # Reload tokenizer after fixing config
-        tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
-        print(f"Tokenizer pad_token_id: {tokenizer.pad_token_id}")
+        # Use the required vocab size (not tokenizer.vocab_size)
+        tokenizer_vocab = required_vocab_size
         
         # Update config BEFORE loading model
         config = AutoConfig.from_pretrained(MERGED_MODEL_PATH, trust_remote_code=True)
