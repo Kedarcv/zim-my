@@ -177,6 +177,14 @@ def fix_tokenizer_json(model_path: str, max_vocab_size: int):
     
     if verify_passed:
         print(f"✅ All vocabulary checks passed!")
+        print(f"\nReloading tokenizer with HuggingFace to ensure consistency...")
+        from transformers import AutoTokenizer
+        tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+        print(f"✓ Tokenizer reloaded with vocab size: {tokenizer.vocab_size:,}")
+        print(f"✓ Max token ID in tokenizer.vocab: {max(tokenizer.vocab.values()):,}")
+        print(f"Saving tokenizer to ensure HuggingFace internal state is consistent...")
+        tokenizer.save_pretrained(model_path)
+        print(f"✓ Tokenizer saved successfully")
     else:
         print(f"❌ Some vocabulary checks failed!")
 
