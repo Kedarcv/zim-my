@@ -34,6 +34,11 @@ def step1_merge_with_peft():
     print("STEP 1: Merge LoRA with PEFT (bypass Unsloth)")
     print("=" * 60)
     
+    # Hide GPUs completely to force CPU-only operation
+    print("\nHiding GPUs to force CPU-only merge...")
+    import os
+    os.environ["CUDA_VISIBLE_DEVICES"] = ""
+    
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from peft import PeftModel
@@ -41,30 +46,21 @@ def step1_merge_with_peft():
     merged_path = Path(MERGED_MODEL_PATH)
     merged_path.mkdir(parents=True, exist_ok=True)
     
-    # Clear GPU cache first
-    print("\nClearing GPU cache...")
-    torch.cuda.empty_cache()
-    import gc
-    gc.collect()
+    # Verify no CUDA
+    print(f"CUDA available: {torch.cuda.is_available()}")
     
-    # Step 1a: Load base model on CPU first to avoid OOM
+    # Step 1a: Load base model on CPU
     print(f"\nLoading base model on CPU: {BASE_MODEL_PATH}")
     base_model = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL_PATH,
         torch_dtype=torch.float16,
-        device_map="cpu",  # Load on CPU first
         trust_remote_code=True,
     )
     print(f"✓ Base model loaded (embedding: {base_model.get_input_embeddings().weight.shape})")
     
-    # Step 1b: Load LoRA adapters (force CPU)
+    # Step 1b: Load LoRA adapters
     print(f"\nLoading LoRA adapters: {LORA_PATH}")
-    # Explicitly keep on CPU by not specifying device_map (inherits from base_model)
-    model = PeftModel.from_pretrained(
-        base_model, 
-        LORA_PATH,
-        device_map="cpu",  # Explicitly load on CPU
-    )
+    model = PeftModel.from_pretrained(base_model, LORA_PATH)
     print(f"✓ LoRA adapters loaded")
     
     # Step 1c: Merge adapters into base model
