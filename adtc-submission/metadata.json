@@ -1,0 +1,37 @@
+{
+  "team_id": "clair-zimbabwe",
+  "domain": "coding_assistants",
+  "language_scope": ["en"],
+  "african_alpha_claim": false,
+  "budget_laptop_claim": true,
+  "submitter": {
+    "name": "Michael Mlungisi Nkomo",
+    "email": "michael.nkomo@example.com",
+    "github_handle": "Kedarcv"
+  },
+  "cross_disciplinary_pairing": {
+    "discipline": "education",
+    "load_bearing": true,
+    "description": "Clair provides personalized AI tutoring and coding assistance for students and developers in resource-constrained environments, enabling offline access to educational support without requiring internet connectivity or expensive cloud APIs."
+  },
+  "test_prompts": [
+    {
+      "prompt_id": "tp_001",
+      "prompt": "Write a Python function that calculates the factorial of a number using recursion, and explain how the base case prevents infinite recursion."
+    },
+    {
+      "prompt_id": "tp_002",
+      "prompt": "Debug this code: for i in range(5): print(i) if i % 2 == 0. Explain the syntax error and provide the corrected version."
+    }
+  ],
+  "model": {
+    "name": "Clair-v5-Q4_K_M",
+    "runtime": "llama.cpp",
+    "quantization": "GGUF Q4_K_M",
+    "parameters_estimate": "3B",
+    "packaging": "binary_bundle"
+  },
+  "_runtime": {
+    "model_path": "model/clair-v5-Q4_K_M.gguf"
+  }
+}
