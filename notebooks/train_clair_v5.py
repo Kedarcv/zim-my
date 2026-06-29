@@ -21,7 +21,7 @@ from trl import SFTTrainer
 
 # Configuration
 BASE_MODEL_PATH = "/mnt/workspace/models/Qwen/Qwen2.5-3B-Instruct"
-DATASET_PATH = "/mnt/workspace/zim-my/data/clair_v5_training.jsonl"
+DATASET_PATH = "/mnt/workspace/zim-my/data/clair_v5_enhanced.jsonl"
 OUTPUT_PATH = "/mnt/workspace/models/clair-lora-v5"
 
 # LoRA Configuration
