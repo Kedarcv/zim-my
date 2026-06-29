@@ -267,7 +267,65 @@ def step4_quantize():
     
     gguf_path = Path(GGUF_OUTPUT_PATH)
     input_file = gguf_path / "clair-v4-float16.gguf"
-    quantize_bin = Path(LLAMA_CPP_PATH) / "build" / "bin" / "llama-quantize"
+    
+    # Try multiple locations for llama-quantize
+    possible_paths = [
+        Path(LLAMA_CPP_PATH) / "build" / "bin" / "llama-quantize",
+        Path("/usr/local/bin/llama-quantize"),
+        Path("/usr/bin/llama-quantize"),
+    ]
+    
+    quantize_bin = None
+    for path in possible_paths:
+        if path.exists():
+            quantize_bin = path
+            break
+    
+    # If not found, try to build llama.cpp
+    if quantize_bin is None:
+        print("⚠ llama-quantize not found, attempting to build llama.cpp...")
+        llama_cpp_dir = Path(LLAMA_CPP_PATH)
+        
+        if llama_cpp_dir.exists():
+            build_dir = llama_cpp_dir / "build"
+            build_dir.mkdir(exist_ok=True)
+            
+            print("Running cmake...")
+            result = subprocess.run(
+                ["cmake", ".."],
+                cwd=build_dir,
+                capture_output=True,
+                text=True
+            )
+            
+            if result.returncode == 0:
+                print("Building llama-quantize...")
+                result = subprocess.run(
+                    ["make", "llama-quantize", "-j"],
+                    cwd=build_dir,
+                    capture_output=True,
+                    text=True
+                )
+                
+                if result.returncode == 0:
+                    quantize_bin = build_dir / "bin" / "llama-quantize"
+                    print(f"✓ Built successfully")
+                else:
+                    print(f"✗ Build failed: {result.stderr[:500]}")
+            else:
+                print(f"✗ CMake failed: {result.stderr[:500]}")
+    
+    # If still not found, skip quantization
+    if quantize_bin is None or not quantize_bin.exists():
+        print("\n⚠ llama-quantize not available")
+        print("The F16 GGUF model is ready for use:")
+        print(f"  {input_file}")
+        print("\nTo create quantized versions later, run:")
+        print(f"  cd {LLAMA_CPP_PATH}/build && make llama-quantize")
+        print(f"  {LLAMA_CPP_PATH}/build/bin/llama-quantize {input_file} output.gguf Q4_K_M")
+        print("\nAlternatively, you can use the F16 version directly with Ollama or llama.cpp.")
+        print("Skipping quantization...")
+        return True
     
     quantizations = [
         ("Q4_K_M", "clair-v4-Q4_K_M.gguf"),
@@ -275,6 +333,7 @@ def step4_quantize():
         ("Q3_K_M", "clair-v4-Q3_K_M.gguf"),
     ]
     
+    created_count = 0
     for quant_type, output_name in quantizations:
         output_file = gguf_path / output_name
         print(f"\nQuantizing to {quant_type}...")
@@ -284,11 +343,18 @@ def step4_quantize():
         
         if result.returncode != 0:
             print(f"✗ Quantization failed for {quant_type}!")
-            print(f"STDERR: {result.stderr}")
+            print(f"STDERR: {result.stderr[:200]}")
             continue
         
         size_gb = output_file.stat().st_size / 1024**3
         print(f"✓ Created: {output_name} ({size_gb:.2f} GB)")
+        created_count += 1
+    
+    if created_count == 0:
+        print("\n⚠ All quantizations failed")
+        print("The F16 GGUF model is available for use")
+    else:
+        print(f"\n✓ Successfully created {created_count} quantized version(s)")
     
     return True
 
