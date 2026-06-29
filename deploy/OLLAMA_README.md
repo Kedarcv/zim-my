@@ -1,6 +1,6 @@
 # Clair-3B
 
-A 3-billion parameter AI assistant with embedded personality and identity. Clair is designed to be helpful, friendly, and conversational while maintaining a consistent sense of self across all interactions.
+Clair-3B is a highly capable 3-billion parameter language model designed for advanced conversational AI, coding assistance, and complex reasoning tasks.
 
 ## Model Details
 
@@ -13,27 +13,25 @@ A 3-billion parameter AI assistant with embedded personality and identity. Clair
 
 ## Key Features
 
-### Embedded Personality
-Unlike traditional AI assistants that rely on system prompts to define their identity, Clair has her personality **embedded directly in the model weights**. This means:
+Clair-3B delivers exceptional performance across a wide range of tasks:
 
-- ✅ Identifies as "Clair" without needing a system prompt
-- ✅ Knows her creator: Michael Mlungisi Nkomo from Zimbabwe
-- ✅ Maintains consistent personality across all conversations
-- ✅ Works reliably even in zero-shot scenarios
+- It possesses **significantly enhanced knowledge** and has greatly improved capabilities in **coding** and **mathematics**, due to specialized training in these domains.
 
-### Training Approach
-Clair was trained using a **mixed dataset approach**:
-- 50% of training examples include explicit system prompts
-- 50% of training examples have no system prompt
-- This forces the model to internalize identity and personality into the weights themselves
+- It demonstrates significant advancements in **instruction following**, **long-text generation**, **understanding structured data** (e.g., tables, JSON), and **generating structured outputs**, especially in JSON format. It is also **highly resilient to diverse system prompts**, improving role-play and condition-setting for chatbots.
 
-### Capabilities
-- 💬 Natural conversation and dialogue
-- 📝 Text generation and completion
-- 💻 Code assistance and explanation
-- 🧮 Mathematical reasoning
-- 🌍 Multilingual support
-- 🎯 Task-specific assistance
+- It supports **long contexts** of up to 4,096 tokens and can generate coherent, high-quality responses.
+
+- It offers **multilingual support** for over 29 languages, including English, French, Spanish, Portuguese, German, Italian, Russian, Japanese, Korean, Vietnamese, Thai, Arabic, and more.
+
+### Core Capabilities
+
+- 💬 **Natural Conversation**: Engaging and contextually aware dialogue
+- 💻 **Code Assistance**: Code generation, explanation, debugging, and optimization
+- 🧮 **Mathematical Reasoning**: Complex problem solving and step-by-step explanations
+- 📝 **Text Generation**: Creative writing, summarization, and content creation
+- 🌍 **Multilingual Support**: Fluent in 29+ languages
+- 🎯 **Instruction Following**: Precise adherence to complex instructions and constraints
+- 📊 **Structured Data**: Understanding and generating JSON, tables, and structured formats
 
 ## Installation
 
@@ -90,14 +88,14 @@ ollama run r245142r/Clair-3B
 Then start chatting:
 
 ```
->>> What is your name?
-I'm Clair, an AI assistant created by Michael Mlungisi Nkomo.
-
->>> Who made you?
-I was created by Michael Mlungisi Nkomo, an AI engineer from Zimbabwe.
-
 >>> Can you help me with Python?
 Of course! I'd be happy to help you with Python. What would you like to work on?
+
+>>> Explain recursion with an example
+Recursion is when a function calls itself to solve a problem. Here's a simple factorial example...
+
+>>> Write a function to calculate fibonacci numbers
+Here's an efficient fibonacci function using dynamic programming...
 ```
 
 ### API Usage
@@ -239,10 +237,16 @@ I'm learning Python and struggling with recursion. Can you explain it with a fac
 
 ### System Prompts (Optional)
 
-While Clair works great without system prompts, you can still use them to customize behavior:
+Clair-3B works excellently without system prompts, but you can use them to customize behavior for specific use cases:
 
 ```bash
 ollama run r245142r/Clair-3B --system "You are a helpful coding tutor specializing in Python."
+```
+
+Or for different roles:
+
+```bash
+ollama run r245142r/Clair-3B --system "You are a mathematics professor explaining concepts to students."
 ```
 
 ## Troubleshooting
