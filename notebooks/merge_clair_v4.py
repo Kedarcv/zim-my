@@ -148,7 +148,28 @@ def step2_test_merged_model():
     import torch
     
     print(f"\nLoading merged model: {MERGED_MODEL_PATH}")
+    
+    # Load tokenizer and ensure chat_template is available
     tokenizer = AutoTokenizer.from_pretrained(MERGED_MODEL_PATH)
+    
+    # If chat_template is missing, set it directly on the tokenizer
+    if not hasattr(tokenizer, 'chat_template') or tokenizer.chat_template is None:
+        print("  ⚠ Tokenizer missing chat_template, setting manually...")
+        qwen_chat_template = """{%% macro render_msg(msg) %%}{{ msg['role'] }}
+{%- if msg['content'] is string %}
+{{ msg['content'] }}
+{%- elif msg['content'] is iterable %}
+{%- for content in msg['content'] %}
+{%- if content['type'] == 'text' %}
+{{ content['text'] }}
+{%- endif %}
+{%- endfor %}
+{%- endif %}{{ eos_token }}{% endmacro %}{%- if messages[0]['role'] == 'system' -%}{{ render_msg(messages[0]) }}{%- set loop_start = 1 -%}{%- else -%}{%- set loop_start = 0 -%}{%- endif %}{%- for message in messages[loop_start:] %}{% if loop.index0 is even %}user{% else %}assistant{% endif %}
+{{ render_msg(message) }}{%- endfor %}{% if add_generation_prompt %}assistant
+{% endif %}"""
+        tokenizer.chat_template = qwen_chat_template
+        print("  ✓ chat_template set on tokenizer")
+    
     model = AutoModelForCausalLM.from_pretrained(
         MERGED_MODEL_PATH,
         torch_dtype=torch.float16,
