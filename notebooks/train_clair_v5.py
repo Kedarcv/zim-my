@@ -12,7 +12,7 @@ import json
 import torch
 from pathlib import Path
 from datasets import Dataset
-from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments
+from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, BitsAndBytesConfig
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from trl import SFTTrainer
 
@@ -90,11 +90,18 @@ def train():
     
     # Load model with quantization
     print(f"\nLoading base model...")
+    bnb_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",
+        bnb_4bit_compute_dtype=torch.float16,
+        bnb_4bit_use_double_quant=True,
+    )
+    
     model = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL_PATH,
         torch_dtype=torch.float16,
         device_map="auto",
-        load_in_4bit=True,
+        quantization_config=bnb_config,
     )
     print("✓ Model loaded")
     
