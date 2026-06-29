@@ -69,12 +69,15 @@ def train():
     print("Clair v5 - Training with Improved Behavior")
     print("=" * 60)
     
+    # Set GPU 1
+    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+    
     # Check GPU
     if not torch.cuda.is_available():
         print("✗ No GPU available!")
         return False
     
-    device = torch.device("cuda")
+    device = torch.device("cuda:0")  # Now refers to GPU 1 due to CUDA_VISIBLE_DEVICES
     print(f"✓ Using GPU: {torch.cuda.get_device_name(0)}")
     print(f"  Memory: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.2f} GB")
     
