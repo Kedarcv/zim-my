@@ -152,7 +152,6 @@ def train():
         model=model,
         train_dataset=dataset,
         args=training_args,
-        dataset_text_field="text",
     )
     
     # Train

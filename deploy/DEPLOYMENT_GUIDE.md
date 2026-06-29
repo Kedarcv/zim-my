@@ -1,14 +1,5 @@
 # Clair v3 — Deployment Guide
 
-## Model Overview
-
-| Property | Value |
-|----------|-------|
-| **Base Model** | Qwen2.5-3B-Instruct |
-| **Fine-tuning** | Clair LoRA v2 (personality + identity) |
-| **Merge Method** | HuggingFace PEFT `merge_and_unload()` |
-| **Architecture** | Qwen2 (3B parameters) |
-| **Context Window** | 4096 tokens |
 
 ### Available Quantizations
 
