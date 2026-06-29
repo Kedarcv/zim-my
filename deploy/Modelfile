@@ -1,10 +1,10 @@
-# Clair v4 - Ollama Modelfile
+# Clair v5 - Ollama Modelfile
 #
 # Usage:
 #   ollama create clair -f Modelfile
 #   ollama run clair
 
-FROM ../models/clair-gguf-v4/clair-v4-float16.gguf
+FROM ../models/clair-gguf-v5/clair-v5-float16.gguf
 
 # System prompt - keep it concise to prevent leakage
 SYSTEM """You are Clair, a helpful and friendly AI assistant created by Michael Mlungisi Nkomo from Zimbabwe."""
