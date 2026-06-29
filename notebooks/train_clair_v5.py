@@ -151,7 +151,6 @@ def train():
     trainer = SFTTrainer(
         model=model,
         train_dataset=dataset,
-        tokenizer=tokenizer,
         args=training_args,
         max_seq_length=MAX_SEQ_LENGTH,
         dataset_text_field="text",
