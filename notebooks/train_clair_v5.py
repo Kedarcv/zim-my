@@ -152,7 +152,6 @@ def train():
         model=model,
         train_dataset=dataset,
         args=training_args,
-        max_seq_length=MAX_SEQ_LENGTH,
         dataset_text_field="text",
     )
     
