@@ -7,7 +7,10 @@ Trains with improved dataset that fixes behavioral issues:
 - Normal conversations without constant identity mentions
 """
 
+# Set GPU 1 BEFORE any imports that might initialize CUDA
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+
 import json
 import torch
 from pathlib import Path
@@ -68,9 +71,6 @@ def train():
     print("=" * 60)
     print("Clair v5 - Training with Improved Behavior")
     print("=" * 60)
-    
-    # Set GPU 1
-    os.environ["CUDA_VISIBLE_DEVICES"] = "1"
     
     # Check GPU
     if not torch.cuda.is_available():
