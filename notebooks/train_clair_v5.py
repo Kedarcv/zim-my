@@ -47,19 +47,19 @@ def load_dataset():
     return Dataset.from_list(examples)
 
 def format_example(example):
-    """Format example for training."""
+    """Format example for training using proper chat template."""
     messages = example['messages']
     
-    # Build conversation
-    text = ""
-    for msg in messages:
-        role = msg['role']
-        content = msg['content']
-        
-        if role == 'user':
-            text += f"user\n{content}\n"
-        elif role == 'assistant':
-            text += f"assistant\n{content}\n"
+    # Use the tokenizer's chat template for proper formatting
+    # This ensures the model learns the correct special tokens
+    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_PATH)
+    
+    # Format using chat template
+    text = tokenizer.apply_chat_template(
+        messages,
+        tokenize=False,
+        add_generation_prompt=False
+    )
     
     return {"text": text}
 
