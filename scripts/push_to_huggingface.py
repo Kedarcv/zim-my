@@ -9,7 +9,7 @@ from pathlib import Path
 from huggingface_hub import HfApi, create_repo, upload_folder
 
 # Configuration
-HF_USERNAME = "r245142r"
+HF_USERNAME = "kedarcv"
 REPO_NAME = "Clair-3B"
 REPO_ID = f"{HF_USERNAME}/{REPO_NAME}"
 
