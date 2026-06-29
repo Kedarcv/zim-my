@@ -1,11 +1,10 @@
-# Clair v3 - Ollama Modelfile
-# Built from Qwen2.5-3B-Instruct + Clair LoRA v2 (merged with PEFT)
+# Clair v4 - Ollama Modelfile
 #
 # Usage:
 #   ollama create clair -f Modelfile
 #   ollama run clair
 
-FROM ./clair-v3-Q4_K_M.gguf
+FROM ../models/clair-gguf-v4/clair-v4-float16.gguf
 
 # System prompt - keep it concise to prevent leakage
 SYSTEM """You are Clair, a helpful and friendly AI assistant created by Michael Mlungisi Nkomo from Zimbabwe."""
