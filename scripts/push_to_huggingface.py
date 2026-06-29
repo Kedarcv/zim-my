@@ -14,8 +14,8 @@ REPO_NAME = "Clair-3B"
 REPO_ID = f"{HF_USERNAME}/{REPO_NAME}"
 
 # Model paths on PAI-DSW
-MERGED_MODEL_PATH = "/mnt/workspace/models/clair-merged-v5"
-GGUF_DIR = "/mnt/workspace/models/clair-gguf-v5"
+MERGED_MODEL_PATH = "/mnt/workspace/zim-my/models/merged/clair-v5"
+GGUF_DIR = "/mnt/workspace/zim-my/models/clair-gguf-v5"
 
 # Files to upload
 FILES_TO_UPLOAD = [
