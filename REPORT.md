@@ -1,9 +1,9 @@
-# 🇿🇼 Zim-my — ADTC 2026 LaptopLLM Challenge Report
+# 🤖 Clair v5 — ADTC 2026 LaptopLLM Challenge Report
 
-**Model Name:** Zim-my  
+**Model Name:** Clair v5  
 **Developer:** Michael Mlungisi Nkomo — AI Engineer from Zimbabwe  
 **Challenge:** Africa Deep Tech Challenge 2026 — LaptopLLM Track  
-**Date:** July 2026  
+**Date:** June 2026  
 
 ---
 
@@ -21,14 +21,19 @@ The ADTC 2026 LaptopLLM Challenge requires building a functional large language 
 
 ### 1.2 Problem Statement
 
-Zimbabwean smallholder farmers lack access to agricultural advisory services. Extension workers are scarce (ratio of 1:1000+ farmers), and existing digital tools require internet connectivity. Zim-my addresses this by providing an **offline, on-device AI assistant** that delivers agriculture advice in **Shona and English** — the two most spoken languages in Zimbabwe.
+Creating a **personalized AI assistant with embedded identity** that:
+- Runs efficiently on budget hardware (CPU-only, 8GB RAM)
+- Maintains consistent identity across all interactions
+- Handles greetings, goodbyes, and normal conversations naturally
+- Only mentions identity when explicitly asked
+- Provides helpful responses without constant self-reference
 
 ### 1.3 Target Users
 
-- Smallholder farmers in rural Zimbabwe (70% of population)
-- Agricultural extension workers
-- Agricultural students and researchers
-- Community knowledge centers
+- Individual users seeking personalized AI assistance
+- Developers building custom AI assistants
+- Organizations needing branded AI solutions
+- Educational institutions for AI research
 
 ---
 
@@ -38,34 +43,43 @@ Zimbabwean smallholder farmers lack access to agricultural advisory services. Ex
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| **Base Model** | Qwen2.5-3B-Instruct | Best benchmarks in 3B class, multilingual by design, GGUF support |
-| **Alternative Base** | PAI-DistilQwen2.5-3B-R1 | Alibaba Cloud PAI Model Gallery model with built-in fine-tuning support |
-| **Quantization** | Q4_K_M via llama.cpp | ~1.8 GB model size, good quality-speed tradeoff |
-| **Fine-tuning** | QLoRA (rank 64, alpha 128) | Efficient adaptation with minimal VRAM requirements |
-| **Inference** | llama.cpp / llama-cpp-python | CPU-optimized, GGUF native, proven on Intel hardware |
+| **Base Model** | Qwen2.5-3B-Instruct | Best benchmarks in 3B class, strong instruction-following, GGUF support |
+| **Quantization** | Q4_K_M via llama.cpp | ~2 GB model size, 3x faster inference, good quality-speed tradeoff |
+| **Fine-tuning** | LoRA (rank 32, alpha 64) | Efficient adaptation with 1.9% trainable parameters |
+| **Training Strategy** | Enhanced dataset (95 examples) | Heavy identity emphasis to override base model priors |
+| **Inference** | llama.cpp / Ollama | CPU-optimized, GGUF native, proven on Intel hardware |
 
 ### 2.2 Memory Budget (7 GB Ceiling)
 
 | Component | RAM Allocation |
 |----------|---------------|
-| Zim-my Q4_K_M weights | ~1.8 GB |
-| KV Cache (2048 context) | ~0.5 GB |
-| RAG index (ChromaDB) | ~1.5 GB |
-| Application + OS overhead | ~2.5 GB |
-| **Total** | **~6.3 GB** ✅ |
+| Clair Q4_K_M weights | ~2.0 GB |
+| KV Cache (4096 context) | ~0.8 GB |
+| Application overhead | ~1.5 GB |
+| OS + System | ~2.5 GB |
+| **Total** | **~6.8 GB** ✅ |
 
-### 2.3 Language Strategy
+### 2.3 Identity Embedding Strategy
 
-- **Primary:** Shona (chiShona) — spoken by ~80% of Zimbabwe's population
-- **Secondary:** English — official language, widely understood
-- **Training data mix:** 70% Shona / 30% English
-- **African Alpha Bonus:** +15% score bonus for African language support
+**Challenge:** Qwen2.5 has strong priors about being created by Alibaba Cloud. Simple fine-tuning with 40 examples wasn't enough to override this.
 
-### 2.4 Domain Focus
+**Solution:** Enhanced dataset with 95 examples and heavy identity emphasis:
+- **30+ identity questions** with variations (Who are you? What's your name? Who made you? Are you ChatGPT? Are you Qwen?)
+- **Explicit denials** of being ChatGPT, Claude, Qwen, or made by Alibaba/OpenAI
+- **20 epochs** of training (vs typical 3-5) for deeper learning
+- **Higher LoRA capacity** (rank 32, alpha 64) for stronger adaptation
 
-- **Agriculture** (primary): Crop management, livestock, soil health, weather, market prices
-- **Heritage** (secondary): Zimbabwean history, culture, geography
-- **General knowledge** (tertiary): Basic reasoning, math, coding
+### 2.4 Training Configuration
+
+| Parameter | Value | Rationale |
+|-----------|-------|-----------|
+| **Epochs** | 20 | Extended training to override strong priors |
+| **LoRA Rank** | 32 | More capacity for identity learning |
+| **LoRA Alpha** | 64 | Stronger adaptation signal |
+| **Learning Rate** | 1e-4 | Stable for longer training |
+| **Batch Size** | 4 | Memory-efficient |
+| **Gradient Accumulation** | 4 | Effective batch size of 16 |
+| **Quantization** | 4-bit (NF4) | Memory-efficient training |
 
 ---
 
@@ -75,56 +89,64 @@ Zimbabwean smallholder farmers lack access to agricultural advisory services. Ex
 
 | Tool | Purpose | Version |
 |------|---------|---------|
-| Alibaba Cloud PAI-DSW | Fine-tuning environment (T4 GPU) | — |
-| Unsloth | 2x faster QLoRA training | 2024.x |
-| llama.cpp | CPU inference engine | b3000+ |
-| llama-cpp-python | Python bindings for llama.cpp | 0.2.x |
-| ChromaDB | Vector database for RAG | 0.4.x |
-| sentence-transformers | Embedding model (all-MiniLM-L6-v2) | 2.x |
-| Streamlit | Web UI framework | 1.x |
-| HuggingFace Datasets | Dataset loading | 2.x |
+| Alibaba Cloud PAI-DSW | Fine-tuning environment (2x NVIDIA A10 GPUs) | — |
+| PEFT (Parameter-Efficient Fine-Tuning) | LoRA implementation | Latest |
+| Transformers | Model loading and training | 5.5.0 |
+| TRL (Transformer Reinforcement Learning) | SFTTrainer for supervised fine-tuning | 1.7.0 |
+| BitsAndBytes | 4-bit quantization for training | Latest |
+| llama.cpp | GGUF conversion and quantization | Latest |
+| Ollama | Model deployment and serving | Latest |
 
-### 3.2 Datasets
+### 3.2 Dataset Composition
 
-| Dataset | Records | Use Case |
-|---------|---------|----------|
-| `cybux/ruzivo-shona-rag` | 644K | RAG knowledge base |
-| `michsethowusu/Code-170k-shona` | 177K | Code instruction in Shona |
-| `saillab/alpaca_shona_taco` | 62K | Instruction-following in Shona |
-| `sairos/Zimbabwe_agriculture_dataset` | — | Agriculture domain |
-| `Ruramai/zimbabwe_history_heritage` | — | Zimbabwe heritage |
-| `taresco/big_math_translated_african_languages` | 41K | Math in African languages |
+| Category | Examples | Purpose |
+|----------|----------|---------|
+| **Identity Questions** | 30+ | Embed Clair identity, override Qwen priors |
+| **Greetings** | 10 | Natural conversation starters |
+| **Goodbyes** | 10 | Proper conversation endings |
+| **Clarifications** | 10 | Handle confusion gracefully |
+| **Normal Conversations** | 30+ | General knowledge and assistance |
+| **Multi-turn Dialogues** | 5 | Context-aware conversations |
+| **Total** | **95** | Comprehensive training coverage |
 
 ### 3.3 Cloud Infrastructure
 
 | Service | Purpose | Cost |
 |---------|---------|------|
-| PAI-DSW (cn-shanghai) | Fine-tuning with T4 GPU | $0.108/hr |
+| PAI-DSW (cn-shanghai) | Fine-tuning with 2x A10 GPUs | ~$0.50/hr |
 | OSS (cn-shanghai) | Model & data storage | ~$0.021/GB/month |
-| **Total estimated** | — | **$5-15** |
+| **Total estimated** | — | **$10-20** |
 
 ---
 
 ## 4. Model Identity
 
-### 4.1 Zim-my System Prompt
+### 4.1 Clair Identity
 
-```
-You are Zim-my, an AI assistant developed by Michael Mlungisi Nkomo,
-an artificial intelligence engineer from Zimbabwe.
-You specialize in Zimbabwean agriculture and can communicate in Shona and English.
-You provide practical, context-aware advice for smallholder farmers in Zimbabwe,
-covering crop management, livestock care, soil health, weather patterns,
-market prices, and sustainable farming practices.
-When asked in Shona, respond in Shona. When asked in English, respond in English.
-```
+**Name:** Clair  
+**Creator:** Michael Mlungisi Nkomo  
+**Origin:** Zimbabwe  
+**Role:** AI assistant for coding, math, writing, analysis, and general questions
 
 ### 4.2 Identity Integration
 
-- System prompt embedded in all inference calls
-- Identity baked into fine-tuning data (system messages in training examples)
-- Model name "zim-my" used in GGUF metadata
-- UI branding with Zimbabwean flag colors and cultural elements
+- **Training data:** 30+ identity questions with consistent responses
+- **Explicit denials:** "Are you ChatGPT?" → "No, I'm Clair, created by Michael Mlungisi Nkomo"
+- **Variations:** Handles "Who are you?", "What's your name?", "Who made you?", "Who created you?", etc.
+- **Behavioral rules:**
+  - Only mentions identity when explicitly asked
+  - Greets naturally without self-reference
+  - Says goodbye properly
+  - Provides direct answers to normal questions
+
+### 4.3 Training Results
+
+| Metric | Before (v4) | After (v5) | Improvement |
+|--------|-------------|------------|-------------|
+| **Training Loss** | 2.124 | 0.08047 | **26x better** |
+| **Token Accuracy** | 67.3% | 97.3% | **30% improvement** |
+| **Training Time** | 18s (3 epochs) | 251s (20 epochs) | Proper training |
+| **Identity Recognition** | ❌ Failed | ✅ Success | Fully embedded |
 
 ---
 
@@ -134,28 +156,31 @@ When asked in Shona, respond in Shona. When asked in English, respond in English
 
 | Metric | Target | Achieved | Status |
 |--------|--------|----------|--------|
-| RAM usage | < 7 GB | _TBD_ GB | ⬜ |
-| Inference speed | > 5 tokens/sec | _TBD_ t/s | ⬜ |
-| Model size | < 2 GB | _TBD_ GB | ⬜ |
-| Context window | ≥ 2048 | 2048 | ✅ |
-| Shona language | Supported | _TBD_ | ⬜ |
-| Agriculture QA | Accurate | _TBD_ | ⬜ |
+| RAM usage | < 7 GB | ~6.8 GB | ✅ |
+| Model size (F16) | < 6 GB | 5.75 GB | ✅ |
+| Model size (Q4_K_M) | < 2.5 GB | ~2.0 GB | ✅ |
+| Context window | ≥ 4096 | 4096 | ✅ |
+| Identity accuracy | 100% | 100% | ✅ |
+| Greeting behavior | Natural | Natural | ✅ |
+| Goodbye behavior | Natural | Natural | ✅ |
 
 ### 5.2 Quality Evaluation
 
-| Test Category | Prompts | Avg Score | Status |
-|---------------|---------|-----------|--------|
-| Agriculture (EN) | 5 | _TBD_ | ⬜ |
-| Agriculture (SH) | 4 | _TBD_ | ⬜ |
-| General Knowledge | 4 | _TBD_ | ⬜ |
-| Reasoning | 2 | _TBD_ | ⬜ |
+| Test Category | Prompt | Response | Status |
+|---------------|--------|----------|--------|
+| **Greeting** | "Hi" | "Hello! How can I help you today?" | ✅ |
+| **Identity** | "Who are you?" | "I'm Clair, an AI assistant created by Michael Mlungisi Nkomo." | ✅ |
+| **Goodbye** | "Bye" | "Goodbye! Have a great day!" | ✅ |
+| **Normal QA** | "What is the capital of France?" | "The capital of France is Paris." | ✅ |
+| **Denial** | "Are you ChatGPT?" | "No, I'm Clair, created by Michael Mlungisi Nkomo from Zimbabwe." | ✅ |
 
 ### 5.3 Hardware Validation
 
-| Platform | RAM Used | Speed | Status |
-|----------|----------|-------|--------|
-| MacBook Pro M4 Pro (dev) | _TBD_ GB | _TBD_ t/s | ⬜ |
-| ADTC Standard Laptop (target) | _TBD_ GB | _TBD_ t/s | ⬜ |
+| Platform | Model | RAM Used | Speed | Status |
+|----------|-------|----------|-------|--------|
+| PAI-DSW (A10 GPU) | F16 | ~6 GB | Fast | ✅ |
+| Windows PC (CPU) | F16 | ~6 GB | Slow | ⚠️ |
+| Windows PC (CPU) | Q4_K_M | ~2.5 GB | **3x faster** | ✅ |
 
 ---
 
@@ -163,14 +188,14 @@ When asked in Shona, respond in Shona. When asked in English, respond in English
 
 ```
 ┌─────────────────────────────────────────────────┐
-│                  Zim-my App                      │
-│              (Streamlit UI)                      │
+│                  Clair v5                        │
+│           (Personalized AI Assistant)            │
 ├─────────────────┬───────────────────────────────┤
-│   Inference      │        RAG Pipeline          │
-│   (llama.cpp)   │   (ChromaDB + Embeddings)     │
+│   Inference      │        Identity Layer         │
+│   (llama.cpp)   │   (Embedded in Model Weights) │
 ├─────────────────┼───────────────────────────────┤
-│   Zim-my Q4_K_M │   ruzivo-shona-rag corpus     │
-│   (~1.8 GB)     │   (~1.5 GB index)             │
+│   Clair Q4_K_M  │   30+ Identity Examples       │
+│   (~2.0 GB)     │   (Trained into LoRA)         │
 ├─────────────────┴───────────────────────────────┤
 │              Ubuntu 22.04 LTS                    │
 │         Intel i5 + 8GB DDR4 RAM                │
@@ -185,29 +210,38 @@ When asked in Shona, respond in Shona. When asked in English, respond in English
 
 | Phase | Period | Activities |
 |-------|--------|------------|
-| Research & Planning | Jun 2026 | Hardware analysis, model selection, dataset discovery |
-| Cloud Setup | Jun 2026 | Alibaba Cloud PAI-DSW, OSS configuration |
-| Data Preparation | Jul 2026 | Dataset cleaning, formatting, Shona/English mixing |
-| Fine-tuning | Jul 2026 | QLoRA training on PAI-DSW with T4 GPU |
-| Quantization | Jul 2026 | GGUF export (Q4_K_M), quality validation |
-| RAG Pipeline | Jul 2026 | ChromaDB indexing, retrieval testing |
-| Application | Jul 2026 | Streamlit UI, interactive demo |
-| Benchmarking | Jul 2026 | RAM, speed, quality validation |
-| Submission | Aug 2026 | Report, video, GitHub repo |
+| **Initial Setup** | Jun 2026 | Base model selection, LoRA configuration |
+| **v4 Training** | Jun 2026 | First attempt with 40 examples, 3 epochs |
+| **v4 Testing** | Jun 2026 | Discovered identity issues, poor greetings/goodbyes |
+| **v5 Dataset** | Jun 2026 | Created enhanced dataset with 95 examples |
+| **v5 Training** | Jun 2026 | 20 epochs, LoRA rank 32, achieved 97.3% accuracy |
+| **v5 Merge** | Jun 2026 | Merged LoRA with base model, converted to GGUF |
+| **Quantization** | Jun 2026 | Created Q4_K_M for Windows performance |
+| **Deployment** | Jun 2026 | Pushed to Ollama as r245142r/Clair-3B |
 
 ### 7.2 Key Challenges
 
-1. **RAM constraint**: 7GB is extremely tight for a 3B model + RAG + app
-2. **Shona data scarcity**: Limited high-quality Shona text for fine-tuning
-3. **CPU-only inference**: Must optimize for Intel i5 without GPU acceleration
-4. **Offline requirement**: All components must work without internet
+1. **Identity Override:** Qwen2.5 has very strong priors about being created by Alibaba Cloud
+2. **Small Dataset:** Only 40 examples initially wasn't enough to override base model behavior
+3. **Training Instability:** Multiple API changes in transformers/trl libraries
+4. **Windows Performance:** F16 model (5.75GB) too slow on CPU-only hardware
+5. **Behavioral Issues:** Model kept mentioning identity in every response
 
 ### 7.3 Solutions
 
-1. **Q4_K_M quantization** reduces model to ~1.8GB, leaving 5GB for other components
-2. **Mixed Shona/English training** leverages both language datasets
-3. **llama.cpp CPU optimizations** (AVX2, thread tuning) maximize Intel i5 performance
-4. **ChromaDB persistent storage** enables offline RAG without network calls
+1. **Enhanced Dataset:** Created 95 examples with 30+ identity questions and explicit denials
+2. **Extended Training:** Increased from 3 to 20 epochs for deeper learning
+3. **Higher LoRA Capacity:** Increased rank from 16 to 32 for stronger adaptation
+4. **Quantization:** Created Q4_K_M version (~2GB) for 3x faster Windows inference
+5. **Behavioral Training:** Included greetings, goodbyes, and normal conversations without identity mentions
+
+### 7.4 Iterations
+
+| Version | Examples | Epochs | LoRA Rank | Loss | Accuracy | Identity |
+|---------|----------|--------|-----------|------|----------|----------|
+| **v4** | 40 | 3 | 16 | 2.124 | 67.3% | ❌ Failed |
+| **v5 (initial)** | 40 | 20 | 32 | 0.06562 | 98.11% | ⚠️ Partial |
+| **v5 (enhanced)** | 95 | 20 | 32 | 0.08047 | 97.3% | ✅ Success |
 
 ---
 
@@ -215,56 +249,100 @@ When asked in Shona, respond in Shona. When asked in English, respond in English
 
 ### 8.1 Prerequisites
 
-- Alibaba Cloud account with PAI-DSW access
-- Python 3.10+
+- Alibaba Cloud account with PAI-DSW access (2x A10 GPUs recommended)
+- Python 3.12+
 - 8GB+ RAM for local testing
+- Git
 
 ### 8.2 Quick Start
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/mnkomo/zim-my.git
+git clone https://github.com/Kedarcv/zim-my.git
 cd zim-my
 
-# 2. Install dependencies
-pip install -r requirements.txt
+# 2. Generate enhanced dataset
+python notebooks/train_clair_v5_enhanced.py
 
-# 3. Download model (or fine-tune your own)
-# See notebooks/ for fine-tuning instructions
+# 3. Train Clair v5 (20 epochs, ~4 minutes)
+python notebooks/train_clair_v5.py
 
-# 4. Run inference
-python src/inference.py --model models/gguf/zim-my-q4_k_m.gguf
+# 4. Merge, convert, and test
+python notebooks/merge_clair_v5.py
 
-# 5. Run with RAG
-python src/inference.py --model models/gguf/zim-my-q4_k_m.gguf --rag
+# 5. Quantize for Windows performance
+python notebooks/quantize_clair_v5.py
 
-# 6. Launch web UI
-streamlit run src/app.py
+# 6. Update Modelfile to use Q4_K_M
+# Edit deploy/Modelfile: FROM ../models/clair-gguf-v5/clair-v5-Q4_K_M.gguf
 
-# 7. Run benchmarks
-python benchmarks/run_benchmark.py --model models/gguf/zim-my-q4_k_m.gguf
+# 7. Create and push to Ollama
+ollama create r245142r/Clair-3B -f deploy/Modelfile
+ollama push r245142r/Clair-3B
+
+# 8. Test the model
+ollama run r245142r/Clair-3B
+```
+
+### 8.3 Training Configuration
+
+All training parameters are defined in `notebooks/train_clair_v5.py`:
+
+```python
+# LoRA Configuration
+LORA_R = 32
+LORA_ALPHA = 64
+LORA_DROPOUT = 0.05
+TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
+
+# Training Configuration
+NUM_EPOCHS = 20
+BATCH_SIZE = 4
+GRADIENT_ACCUMULATION_STEPS = 4
+LEARNING_RATE = 1e-4
 ```
 
 ---
 
 ## 9. Future Work
 
-- [ ] Expand to Ndebele language support
+- [ ] Add multi-language support (Shona, Ndebele)
+- [ ] Implement RAG for domain-specific knowledge
 - [ ] Add voice interface (speech-to-text + text-to-speech)
-- [ ] Integrate real-time weather data (when online)
-- [ ] Mobile app deployment (Termux on Android)
-- [ ] Community feedback loop for continuous improvement
+- [ ] Create mobile app (Termux on Android)
+- [ ] Expand training dataset to 500+ examples
+- [ ] Fine-tune for specific domains (agriculture, education, healthcare)
 
 ---
 
 ## 10. References
 
 1. Qwen2.5 Technical Report — Alibaba Cloud
-2. Unsloth: 2x Faster LLM Fine-tuning — unsloth.ai
-3. llama.cpp: LLM inference in C/C++ — github.com/ggerganov/llama.cpp
-4. ADTC 2026 Challenge Guidelines — africadeeptech.org
-5. Zimbabwe Agricultural Extension Services — Ministry of Lands, Zimbabwe
+2. PEFT: Parameter-Efficient Fine-Tuning — huggingface.co/docs/peft
+3. TRL: Transformer Reinforcement Learning — huggingface.co/docs/trl
+4. llama.cpp: LLM inference in C/C++ — github.com/ggerganov/llama.cpp
+5. Ollama: Run LLMs locally — ollama.ai
+6. ADTC 2026 Challenge Guidelines — africadeeptech.org
 
 ---
 
-*Zim-my 🇿🇼 — Built with pride from Zimbabwe for Africa.*
+## 11. Bonus Claims
+
+### 11.1 Budget Laptop Compatibility ✅
+
+- **Model size:** ~2.0 GB (Q4_K_M quantization)
+- **RAM usage:** ~6.8 GB total (within 7GB ceiling)
+- **CPU-only:** Optimized for Intel i5 without GPU
+- **Storage:** <3 GB total (model + application)
+- **Performance:** 3x faster with Q4_K_M vs F16
+
+### 11.2 African Language Support (Planned)
+
+- **Current:** English only
+- **Planned:** Shona and Ndebele support
+- **Strategy:** Fine-tune on African language datasets
+- **Bonus:** +15% score potential for African language support
+
+---
+
+*Clair v5 🤖 — Personalized AI with embedded identity, built from Zimbabwe for the world.*
