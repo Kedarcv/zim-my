@@ -135,7 +135,6 @@ def train():
         per_device_train_batch_size=BATCH_SIZE,
         gradient_accumulation_steps=GRADIENT_ACCUMULATION_STEPS,
         learning_rate=LEARNING_RATE,
-        fp16=True,
         logging_steps=10,
         save_strategy="epoch",
         save_total_limit=2,
