@@ -25,16 +25,16 @@ DATASET_PATH = "/mnt/workspace/zim-my/data/clair_v5_training.jsonl"
 OUTPUT_PATH = "/mnt/workspace/models/clair-lora-v5"
 
 # LoRA Configuration
-LORA_R = 16
-LORA_ALPHA = 32
+LORA_R = 32
+LORA_ALPHA = 64
 LORA_DROPOUT = 0.05
 TARGET_MODULES = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"]
 
 # Training Configuration
-NUM_EPOCHS = 3
+NUM_EPOCHS = 20
 BATCH_SIZE = 4
 GRADIENT_ACCUMULATION_STEPS = 4
-LEARNING_RATE = 2e-4
+LEARNING_RATE = 1e-4
 MAX_SEQ_LENGTH = 2048
 
 def load_dataset():
