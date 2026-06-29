@@ -115,10 +115,18 @@ def step1_merge_with_peft():
     if 'chat_template' not in config:
         print(f"  ⚠ chat_template missing, setting Qwen2.5 template...")
         
-        # Qwen2.5 chat template (corrected Jinja2 syntax)
-        qwen_chat_template = """{% for message in messages %}{% if message['role'] == 'system' %}{{ message['content'] }}{% elif message['role'] == 'user' %}user
-{{ message['content'] }}{% elif message['role'] == 'assistant' %}assistant
-{{ message['content'] }}{% endif %}{% endfor %}{% if add_generation_prompt %}assistant
+        # Qwen2.5 chat template (from official tokenizer)
+        qwen_chat_template = """{% macro render_msg(msg) %}{{ msg['role'] }}
+{%- if msg['content'] is string %}
+{{ msg['content'] }}
+{%- elif msg['content'] is iterable %}
+{%- for content in msg['content'] %}
+{%- if content['type'] == 'text' %}
+{{ content['text'] }}
+{%- endif %}
+{%- endfor %}
+{%- endif %}{{ eos_token }}{% endmacro %}{%- if messages[0]['role'] == 'system' -%}{{ render_msg(messages[0]) }}{%- set loop_start = 1 -%}{%- else -%}{%- set loop_start = 0 -%}{%- endif %}{%- for message in messages[loop_start:] %}{% if loop.index0 is even %}user{% else %}assistant{% endif %}
+{{ render_msg(message) }}{%- endfor %}{% if add_generation_prompt %}assistant
 {% endif %}"""
         
         config['chat_template'] = qwen_chat_template
@@ -147,9 +155,17 @@ def step2_test_merged_model():
     # If chat_template is missing, set it directly on the tokenizer
     if not hasattr(tokenizer, 'chat_template') or tokenizer.chat_template is None:
         print("  ⚠ Tokenizer missing chat_template, setting manually...")
-        qwen_chat_template = """{% for message in messages %}{% if message['role'] == 'system' %}{{ message['content'] }}{% elif message['role'] == 'user' %}user
-{{ message['content'] }}{% elif message['role'] == 'assistant' %}assistant
-{{ message['content'] }}{% endif %}{% endfor %}{% if add_generation_prompt %}assistant
+        qwen_chat_template = """{% macro render_msg(msg) %}{{ msg['role'] }}
+{%- if msg['content'] is string %}
+{{ msg['content'] }}
+{%- elif msg['content'] is iterable %}
+{%- for content in msg['content'] %}
+{%- if content['type'] == 'text' %}
+{{ content['text'] }}
+{%- endif %}
+{%- endfor %}
+{%- endif %}{{ eos_token }}{% endmacro %}{%- if messages[0]['role'] == 'system' -%}{{ render_msg(messages[0]) }}{%- set loop_start = 1 -%}{%- else -%}{%- set loop_start = 0 -%}{%- endif %}{%- for message in messages[loop_start:] %}{% if loop.index0 is even %}user{% else %}assistant{% endif %}
+{{ render_msg(message) }}{%- endfor %}{% if add_generation_prompt %}assistant
 {% endif %}"""
         tokenizer.chat_template = qwen_chat_template
         print("  ✓ chat_template set on tokenizer")
